@@ -1,11 +1,11 @@
 package models
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/mirzaRakha28/ninja_to/db"
+	"github.com/mirzaRakha28/ninja_to/helpers"
 )
 
 type User struct {
@@ -22,15 +22,58 @@ type User struct {
 	Jml_paket     int    `json:"jml_paket"`
 }
 
+func Login(username string, password string) (Response, error) {
+	var res Response
+	con := db.CreateCon()
+	var obj User
+	var arrobj []User
+
+	sqlStatement := "SELECT * FROM user WHERE username = ?"
+
+	stmt, err := con.Query(sqlStatement, username)
+	if err != nil {
+		return res, err
+	}
+
+	for stmt.Next() {
+		err = stmt.Scan(&obj.Id, &obj.Email, &obj.Username, &obj.Password, &obj.Jenjang,
+			&obj.Score, &obj.Jml_benar, &obj.Jml_pelajaran, &obj.Jml_ratarata,
+			&obj.Jml_salah, &obj.Jml_paket)
+		if err != nil {
+			return res, err
+		}
+
+		arrobj = append(arrobj, obj)
+	}
+
+	if obj.Id == 0 {
+		res.Status = http.StatusOK
+		res.Message = "Username tidak Cocok"
+		res.Data = arrobj
+		return res, nil
+	}
+	if obj.Password == password {
+		res.Status = http.StatusOK
+		res.Message = "Login Berhasil"
+		res.Data = arrobj
+	} else {
+		res.Status = http.StatusOK
+		res.Message = "Password  tidak cocok"
+		res.Data = nil
+
+	}
+	return res, nil
+}
 func Register(email string, username string, password string, jenjang string) (Response, error) {
 	var res Response
 
 	v := validator.New()
 
+	hash, _ := helpers.HashPassword(password)
 	peg := User{
 		Email:    email,
 		Username: username,
-		Password: password,
+		Password: hash,
 		Jenjang:  jenjang,
 	}
 	err := v.Struct(peg)
@@ -47,7 +90,7 @@ func Register(email string, username string, password string, jenjang string) (R
 		return res, err
 	}
 
-	result, err := stmt.Exec(email, username, password, jenjang)
+	result, err := stmt.Exec(email, username, hash, jenjang)
 	if err != nil {
 		return res, err
 	}
@@ -66,7 +109,6 @@ func Register(email string, username string, password string, jenjang string) (R
 	if err != nil {
 		return res, err
 	}
-	fmt.Println(rows)
 
 	for rows.Next() {
 		err = rows.Scan(&obj.Id, &obj.Email, &obj.Username, &obj.Password, &obj.Jenjang,
@@ -80,7 +122,7 @@ func Register(email string, username string, password string, jenjang string) (R
 	}
 
 	res.Status = http.StatusOK
-	res.Message = "Success"
+	res.Message = "Registrasi Berhasil"
 	res.Data = arrobj
 
 	return res, nil

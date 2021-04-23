@@ -13,5 +13,6 @@ func Init() *echo.Echo {
 		return c.String(http.StatusOK, "Hello, this is echo!")
 	})
 	e.POST("/user", controllers.Register)
+	e.POST("/login", controllers.Login)
 	return e
 }
